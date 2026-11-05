@@ -174,6 +174,28 @@ def test_cleanup_waits_for_a_running_step(install):
     assert (install[0] / ".venv-kimodo").exists()
 
 
+@pytest.mark.parametrize("checks", [(True,), (False, True)], ids=["active", "just-started"])
+def test_cleanup_preserves_models_during_a_download(install, monkeypatch, checks):
+    states = iter(checks)
+    monkeypatch.setattr(models, "_downloading", lambda: next(states))
+    evicted = []
+    monkeypatch.setattr(jobs, "evict", lambda: evicted.append(True))
+    weights = install[2] / "Fx" / "w.bin"
+    before = weights.read_bytes()
+
+    with pytest.raises(ApiError) as e:
+        storage.cleanup("group:fx")
+    assert e.value.status == 409 and e.value.code == "busy"
+    assert "download" in str(e.value)
+    assert weights.read_bytes() == before and not evicted
+    assert jobs.GPU.acquire(blocking=False), "cleanup left the GPU lock held"
+    jobs.GPU.release()
+
+    monkeypatch.setattr(models, "_downloading", lambda: False)
+    assert storage.cleanup("group:fx")["failed"] == 0
+    assert not weights.exists()
+
+
 def test_a_drive_is_low_under_20_gb_or_10_percent(install, monkeypatch):
     usage = type("U", (), {})
     for total, free, low in ((1e12, 4.3e10, True), (1e12, 2e11, False), (1e11, 1.9e10, True)):
