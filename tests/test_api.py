@@ -473,6 +473,60 @@ def test_a_failure_while_finishing_ends_the_job_as_failed(client, monkeypatch):
     assert client.get(f"/api/assets/{asset}").json()["versions"] == []
 
 
+@pytest.mark.parametrize("output", ["missing.glb", "../keep.glb", "absolute"])
+def test_invalid_step_outputs_are_not_committed(client, monkeypatch, output):
+    asset = client.post("/api/assets", json={"name": "Crate"}).json()["id"]
+    parent = wait(client, run(client, asset))["version"]
+    before = client.get(f"/api/assets/{asset}").json()["versions"]
+    asset_dir = library.asset_dir(asset)
+    keep = asset_dir / "keep.glb"
+    keep.write_bytes(b"existing data")
+    drain(client.events)
+
+    def invalid_result(job, in_dir, out):
+        assert in_dir == asset_dir / parent
+        (out / "partial.glb").write_bytes(b"unfinished")
+        path = str(keep.resolve()) if output == "absolute" else output
+        return "RESULT", {"outputs": {"mesh": path}}
+
+    monkeypatch.setattr(jobs, "_run_oneshot", invalid_result)
+    job = wait(client, run(client, asset, parent=parent))
+    assert job["status"] == "failed" and job["error"]["code"] == "failed"
+    expected = "missing outputs:" if output == "missing.glb" else "outputs outside --out:"
+    assert job["error"]["message"].startswith(expected)
+    assert "version" not in job
+    assert client.get(f"/api/assets/{asset}").json()["versions"] == before
+    assert sorted(p.name for p in asset_dir.iterdir() if p.is_dir()) == [parent]
+    assert keep.read_bytes() == b"existing data"
+    assert not any(event == "version_created" for event, _ in drain(client.events))
+
+
+def test_cancel_before_committing_a_result_preserves_the_asset(client, monkeypatch):
+    asset = library.create_asset("Crate", brief={"description": "original"})["id"]
+    asset_dir = library.asset_dir(asset)
+    before = (asset_dir / "asset.json").read_bytes()
+    job = jobs.Job(asset, "brief", None, {})
+    monkeypatch.setitem(jobs.JOBS, job.id, job)
+    monkeypatch.setattr(jobs, "_watch", lambda job: None)
+
+    def cancelled_result(job, in_dir, out):
+        (out / "brief.yaml").write_text("description: replacement\n", encoding="utf-8")
+        jobs.cancel(job.id)
+        return "RESULT", {"outputs": {"brief": "brief.yaml"}}
+
+    monkeypatch.setattr(jobs, "_run_oneshot", cancelled_result)
+    jobs._run_locked(job)
+    assert job.status == "cancelled" and job.version is None and job.error is None
+    assert (asset_dir / "asset.json").read_bytes() == before
+    assert not any(p.is_dir() for p in asset_dir.iterdir())
+    events = drain(client.events)
+    assert not any(event == "version_created" for event, _ in events)
+    assert [data["status"] for event, data in events if event == "job"] == [
+        "running",
+        "cancelled",
+    ]
+
+
 def test_cancel_takes_the_steps_children_with_it(tmp_path):
     import subprocess
 
