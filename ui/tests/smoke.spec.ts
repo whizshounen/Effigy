@@ -2737,6 +2737,42 @@ test("Library: Select assets is explicit; Recently deleted lists what deleting m
   await expect(page.locator(".trash [role=status]")).toHaveText("bin test, 0 versions: restored.");
 });
 
+test("New asset: clicking the selected mode keeps the chosen picture", async ({ page }) => {
+  await page.goto("/#/new");
+  for (const dimension of ["A 3D model", "A 2D picture or sprite"]) {
+    await page.getByRole("button", { name: dimension, exact: true }).click();
+    await page.getByRole("button", { name: "From an image", exact: true }).click();
+    await page.getByLabel("Picture (PNG, JPEG or WebP)").setInputFiles({ name: "lantern.png", mimeType: "image/png", buffer: PNG });
+    const picture = page.getByAltText("the chosen picture");
+    await expect(picture).toBeVisible();
+    await page.getByRole("button", { name: "From an image", exact: true }).click();
+    await expect(picture).toBeVisible();
+    await page.getByRole("button", { name: dimension, exact: true }).click();
+    await expect(picture).toBeVisible();
+    await expect(page.getByRole("button", { name: /^(Remove background|Add the picture)$/ })).toBeEnabled();
+    await page.getByRole("button", { name: "Remove file", exact: true }).click();
+    await expect(picture).toHaveCount(0);
+  }
+});
+
+test("New asset: a late picture decode cannot undo a mode switch", async ({ page }) => {
+  await page.goto("/#/new");
+  await page.getByRole("button", { name: "From an image", exact: true }).click();
+  await page.evaluate(() => {
+    const decode = window.createImageBitmap.bind(window);
+    window.createImageBitmap = ((image: Blob) => new Promise<ImageBitmap>((resolve, reject) => {
+      (window as any).finishDecode = () => decode(image).then(resolve, reject);
+    })) as typeof createImageBitmap;
+  });
+  await page.getByLabel("Picture (PNG, JPEG or WebP)").setInputFiles({ name: "lantern.png", mimeType: "image/png", buffer: PNG });
+  await page.waitForFunction(() => !!(window as any).finishDecode);
+  await page.getByRole("button", { name: "From a description", exact: true }).click();
+  await page.getByRole("button", { name: "From an image", exact: true }).click();
+  await page.evaluate(() => (window as any).finishDecode());
+  await expect(page.getByAltText("the chosen picture")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Remove background", exact: true })).toBeDisabled();
+});
+
 // --- the 2D track (research 15; M50 pictures, M51 pixel art) ------------------------------------------------------
 
 const models2d = async (page: Page, styles: boolean) => {

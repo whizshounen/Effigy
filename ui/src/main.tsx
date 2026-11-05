@@ -1164,7 +1164,9 @@ function NewAsset(props: {
   const [fileKey, setFileKey] = useState(0); // remounts the file input to clear it
   const [busy, run] = useBusy();
   const made = useRef<string | null>(null); // the asset a failed attempt created: retry in it, not in a new one
+  const choosing = useRef(0);
   const choose = async (f: File | null) => {
+    const token = ++choosing.current;
     if (info?.url) URL.revokeObjectURL(info.url);
     setFile(null);
     setInfo(null);
@@ -1176,6 +1178,10 @@ function NewAsset(props: {
       });
     try {
       const b = await createImageBitmap(f); // proves it decodes
+      if (token !== choosing.current) {
+        b.close();
+        return;
+      }
       setInfo({
         url: URL.createObjectURL(f),
         text: `${f.name} · ${b.width} × ${b.height} px`,
@@ -1184,6 +1190,7 @@ function NewAsset(props: {
       b.close();
       setFile(f);
     } catch {
+      if (token !== choosing.current) return;
       setInfo({ text: `${f.name} can't be read as a picture.`, ok: false });
     }
   };
@@ -1271,6 +1278,7 @@ function NewAsset(props: {
               key={d}
               aria-pressed={dim === d}
               onClick={() => {
+                if (d === dim) return;
                 setDim(d);
                 if (d === "3d" && mode === "draw") setMode("describe");
                 clearFile();
@@ -1293,6 +1301,7 @@ function NewAsset(props: {
               key={m}
               aria-pressed={mode === m}
               onClick={() => {
+                if (m === mode) return;
                 setMode(m);
                 clearFile();
                 made.current = null;
