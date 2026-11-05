@@ -2929,6 +2929,11 @@ As built (`bollard-fixes`), from the owner's MCP agent's BY04 street bollard:
 
 ### UX review 2026-10-12 (`docs/ux-review/2026-10-12/`)
 
+- **Image selection papercuts (2026-11-05)**: New asset keeps the selected picture when its already-active
+  dimension or starting mode is clicked. Image validation only applies to the latest selection; switching modes,
+  clearing the file or choosing another file invalidates pending decodes (including their errors).
+  Acceptance: the two New asset selection regressions in `ui/tests/smoke.spec.ts`; no API or GPU changes.
+
 - **Pass 1 (2026-10-12, `ux-pass1`; UX-01..04, UX-08)**: unsaved editor work is guarded (`ui/src/hooks.ts`
   `useUnsaved` + `leave`: the animation, skeleton and marker editors register while they hold changes and no save
   runs; Close/Cancel, a `navigate`, an outside hash change (reverted with `replaceState`) and a reload ask first);
