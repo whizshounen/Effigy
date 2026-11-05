@@ -29,7 +29,6 @@
 - {name: accelerate, kind: code, license: Apache-2.0, commercial: true}
 - {name: transformers, kind: code, license: Apache-2.0, commercial: true}
 - {name: timm, kind: code, license: Apache-2.0, commercial: true}
-- {name: kornia, kind: code, license: Apache-2.0, commercial: true}
 - {name: einops, kind: code, license: MIT, commercial: true}
 - {name: cumesh, kind: code, license: MIT, commercial: true, flag: "our sm_120 build (wheels/, wheels.yml) of JeffreyXiang/CuMesh 12289e1; bundles xatlas (MIT)"}
 - {name: flex-gemm, kind: code, license: MIT, commercial: true, flag: "our sm_120 build of JeffreyXiang/FlexGEMM 6dd94a8 + flex-gemm-windows.patch; .venv-moge (M55): upstream b2fadb2 as it is, pure Triton"}
@@ -72,7 +71,7 @@
 - {name: facebookresearch/MHR, kind: weights, license: Apache-2.0, commercial: true, flag: "M34: the MHR body model SAM 3D Body loads (mhr_model.pt, nvidia/GEM-X's copy)"}
 - {name: py-soma-x, kind: code, license: Apache-2.0, commercial: true, flag: "M34: = NVlabs/SOMA-X, the installed package"}
 - {name: warp-lang, kind: code, license: Apache-2.0, commercial: true, flag: "NVIDIA Warp 1.12: SOMA's skinning kernels"}
-- {name: lightning, kind: code, license: Apache-2.0, commercial: true, flag: "GEM-X's model class"}
+- {name: lightning, kind: code, license: Apache-2.0, commercial: true, flag: "SkinTokens transitive dependency; GEM-X uses pytorch-lightning"}
 - {name: pytorch-lightning, kind: code, license: Apache-2.0, commercial: true, flag: "SAM 3D Body's model class"}
 - {name: hydra-colorlog, kind: code, license: MIT, commercial: true, flag: "GEM-X's Hydra configs"}
 - {name: rich, kind: code, license: MIT, commercial: true, flag: "GEM-X's logging"}
