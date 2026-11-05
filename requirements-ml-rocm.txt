@@ -32,7 +32,6 @@ accelerate>=1.0
 peft>=0.21
 transformers>=5,<6
 timm>=1.0
-kornia>=0.8
 einops>=0.8
 easydict>=1.10
 onnxruntime>=1.20
